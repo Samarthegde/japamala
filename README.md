@@ -126,8 +126,8 @@ See [requirements.md](requirements.md) for detailed development roadmap and feat
 
 ## 🐛 Bug Reports & Feature Requests
 
-- **Bug Reports**: [GitHub Issues](https://github.com/yourusername/japamala/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/yourusername/japamala/discussions)
+- **Bug Reports**: [GitHub Issues](https://github.com/eterniqo/japamala/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/eterniqo/japamala/discussions)
 - **Security Issues**: Contact maintainers directly
 
 ## 📄 License
