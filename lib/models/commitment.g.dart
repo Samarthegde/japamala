@@ -1,56 +1,53 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'mantra.dart';
+part of 'commitment.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class MantraAdapter extends TypeAdapter<Mantra> {
+class CommitmentAdapter extends TypeAdapter<Commitment> {
   @override
-  final int typeId = 0;
+  final int typeId = 4;
 
   @override
-  Mantra read(BinaryReader reader) {
+  Commitment read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Mantra(
+    return Commitment(
       id: fields[0] as String,
-      name: fields[1] as String,
+      mantraId: fields[1] as String,
       targetCount: fields[2] as int,
-      description: fields[3] as String?,
-      createdDate: fields[4] as DateTime,
-      currentCount: fields[5] as int,
-      isDaily: fields[6] as bool,
-      lastResetDate: fields[7] as DateTime?,
-      beadsPerRound: fields[8] as int?,
+      startDate: fields[3] as DateTime,
+      createdAt: fields[5] as DateTime,
+      deadline: fields[4] as DateTime?,
+      completedAt: fields[6] as DateTime?,
+      intention: fields[7] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Mantra obj) {
+  void write(BinaryWriter writer, Commitment obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.mantraId)
       ..writeByte(2)
       ..write(obj.targetCount)
       ..writeByte(3)
-      ..write(obj.description)
+      ..write(obj.startDate)
       ..writeByte(4)
-      ..write(obj.createdDate)
+      ..write(obj.deadline)
       ..writeByte(5)
-      ..write(obj.currentCount)
+      ..write(obj.createdAt)
       ..writeByte(6)
-      ..write(obj.isDaily)
+      ..write(obj.completedAt)
       ..writeByte(7)
-      ..write(obj.lastResetDate)
-      ..writeByte(8)
-      ..write(obj.beadsPerRound);
+      ..write(obj.intention);
   }
 
   @override
@@ -59,7 +56,7 @@ class MantraAdapter extends TypeAdapter<Mantra> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MantraAdapter &&
+      other is CommitmentAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

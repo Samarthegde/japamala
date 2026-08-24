@@ -27,17 +27,22 @@ class DailyCompletion extends HiveObject {
     this.completionTime,
   });
 
+  /// Deterministic key for a mantra on a given practice day, so a completion
+  /// can be looked up directly instead of scanning the box.
+  static String idFor(String mantraId, DateTime date) =>
+      '${mantraId}_${date.year}-${date.month}-${date.day}';
+
   factory DailyCompletion.create({
     required String mantraId,
     required DateTime date,
     required bool completed,
     DateTime? completionTime,
   }) {
-    final id = '${mantraId}_${date.year}-${date.month}-${date.day}';
+    final day = DateTime(date.year, date.month, date.day);
     return DailyCompletion(
-      id: id,
+      id: idFor(mantraId, day),
       mantraId: mantraId,
-      date: date,
+      date: day, // Store date-only, so lookups don't have to strip the time
       completed: completed,
       completionTime: completionTime,
     );

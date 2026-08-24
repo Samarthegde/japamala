@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -20,13 +19,15 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Required by flutter_local_notifications, which uses java.time APIs
+        // unavailable on older Android versions without desugaring.
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
+    kotlin {
+    jvmToolchain(21)
+}
 
     defaultConfig {
         applicationId = "in.eterniqo.japamala"
@@ -36,12 +37,19 @@ android {
         versionName = flutter.versionName
     }
 
-    signingConfigs {
+ signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = file(keystoreProperties["storeFile"] as String? ?: "")
-            storePassword = keystoreProperties["storePassword"] as String?
+            val keyAliasStr = keystoreProperties["keyAlias"] as? String
+            val keyPasswordStr = keystoreProperties["keyPassword"] as? String
+            val storeFilePath = keystoreProperties["storeFile"] as? String
+            val storePasswordStr = keystoreProperties["storePassword"] as? String
+
+            if (!storeFilePath.isNullOrEmpty() && !keyAliasStr.isNullOrEmpty()) {
+                keyAlias = keyAliasStr
+                keyPassword = keyPasswordStr
+                storeFile = file(storeFilePath)
+                storePassword = storePasswordStr
+            }
         }
     }
 
@@ -57,4 +65,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
