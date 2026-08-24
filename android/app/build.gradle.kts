@@ -37,18 +37,18 @@ android {
         versionName = flutter.versionName
     }
 
- signingConfigs {
-        create("release") {
-            val keyAliasStr = keystoreProperties["keyAlias"] as? String
-            val keyPasswordStr = keystoreProperties["keyPassword"] as? String
-            val storeFilePath = keystoreProperties["storeFile"] as? String
-            val storePasswordStr = keystoreProperties["storePassword"] as? String
+    // A release keystore is only present when key.properties points at one —
+    // locally for a real release, or written by CI from repository secrets.
+    val releaseStoreFile = keystoreProperties.getProperty("storeFile")
+    val hasReleaseKeystore = !releaseStoreFile.isNullOrEmpty()
 
-            if (!storeFilePath.isNullOrEmpty() && !keyAliasStr.isNullOrEmpty()) {
-                keyAlias = keyAliasStr
-                keyPassword = keyPasswordStr
-                storeFile = file(storeFilePath)
-                storePassword = storePasswordStr
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(releaseStoreFile)
+                storePassword = keystoreProperties.getProperty("storePassword")
             }
         }
     }
@@ -57,7 +57,14 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // Without a keystore the build still produces an installable
+            // artifact, signed with the debug key. Such a build can be
+            // sideloaded for testing but never uploaded to Play.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
