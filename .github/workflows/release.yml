@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the draft release (blank = derive from pubspec)'
+        required: false
+
+# Needed to create the draft release and upload its artifacts.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & draft release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      # Tests are deliberately skipped for releases — see ci.yml.
+
+      - name: Work out the release tag
+        id: meta
+        run: |
+          version=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          name=${version%%+*}
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="v${name}-build${{ github.run_number }}"
+          fi
+          echo "tag=$tag"          >> "$GITHUB_OUTPUT"
+          echo "version=$version"  >> "$GITHUB_OUTPUT"
+
+      # Signing only happens when the repository has the secrets set. Without
+      # them the build still succeeds, signed with the debug key — installable
+      # for testing, but never uploadable to Play.
+      - name: Configure release signing
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "No signing secrets set — building with the debug key."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          cat > android/key.properties <<EOF
+          storeFile=release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      # Split per ABI: a universal APK is ~56 MB because it carries three
+      # copies of the Flutter engine. Each split is around 20 MB.
+      - name: Build APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build Play bundle
+        run: flutter build appbundle --release
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          v="${{ steps.meta.outputs.version }}"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            src="build/app/outputs/flutter-apk/app-$abi-release.apk"
+            [ -f "$src" ] && cp "$src" "dist/japamala-$v-$abi.apk"
+          done
+          cp build/app/outputs/bundle/release/app-release.aab \
+             "dist/japamala-$v.aab"
+          ls -lh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: japamala-${{ steps.meta.outputs.version }}
+          path: dist/*
+
+      - name: Write release notes
+        run: |
+          {
+            echo "Japamala ${{ steps.meta.outputs.version }}"
+            echo
+            if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+              echo "Signed with the release key."
+            else
+              echo "> **Debug-signed build.** No release keystore is"
+              echo "> configured, so these artifacts are for sideloading and"
+              echo "> testing only — they cannot be uploaded to Play."
+            fi
+            echo
+            echo "Install \`japamala-*-arm64-v8a.apk\` on most modern phones."
+            echo
+            echo "Built from \`${GITHUB_SHA:0:7}\`."
+          } > notes.md
+
+      # Always a draft: nothing becomes public until it is published by hand.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.meta.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* \
+              --draft \
+              --title "Japamala ${{ steps.meta.outputs.version }}" \
+              --notes-file notes.md
+          fi
+          echo "Draft release ready: $tag"

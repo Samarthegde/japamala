@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../models/session.dart';
 import '../providers/mantra_provider.dart';
 import '../providers/session_provider.dart';
-import '../models/session.dart';
 
 class SessionHistoryScreen extends StatelessWidget {
   const SessionHistoryScreen({super.key});
@@ -11,9 +11,7 @@ class SessionHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Session History'),
-      ),
+      appBar: AppBar(title: const Text('Session History')),
       body: Consumer2<MantraProvider, SessionProvider>(
         builder: (context, mantraProvider, sessionProvider, child) {
           final allSessions = sessionProvider.getAllSessions();
@@ -26,7 +24,9 @@ class SessionHistoryScreen extends StatelessWidget {
                   Icon(
                     Icons.history,
                     size: 80,
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -35,9 +35,11 @@ class SessionHistoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Complete some mantra rounds to see your history',
+                    'Japa, breathing and meditation all show up here',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -53,6 +55,17 @@ class SessionHistoryScreen extends StatelessWidget {
               final session = allSessions[index];
               final mantra = mantraProvider.getMantraById(session.mantraId);
 
+              // Breathing and meditation have no mantra behind them, so they
+              // carry their own title.
+              final title = session.kind == SessionKind.japa
+                  ? (mantra?.name ?? 'Deleted mantra')
+                  : (session.title ?? session.kind.label);
+
+              final duration =
+                  '${session.duration.inMinutes}m '
+                  '${session.duration.inSeconds % 60}s';
+              final countLabel = session.countLabel;
+
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
@@ -61,19 +74,25 @@ class SessionHistoryScreen extends StatelessWidget {
                         ? Colors.green
                         : Theme.of(context).colorScheme.primary,
                     child: Icon(
-                      session.completed ? Icons.check : Icons.play_arrow,
+                      _iconFor(session.kind),
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
-                  title: Text(mantra?.name ?? 'Unknown Mantra'),
+                  title: Text(title),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${session.count} beads • ${session.duration.inMinutes}m ${session.duration.inSeconds % 60}s'),
+                      Text(
+                        countLabel.isEmpty
+                            ? duration
+                            : '$countLabel • $duration',
+                      ),
                       Text(
                         DateFormat('MMM d, h:mm a').format(session.endTime),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -88,5 +107,16 @@ class SessionHistoryScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  static IconData _iconFor(SessionKind kind) {
+    switch (kind) {
+      case SessionKind.japa:
+        return Icons.blur_circular;
+      case SessionKind.breathing:
+        return Icons.air;
+      case SessionKind.meditation:
+        return Icons.self_improvement;
+    }
   }
 }

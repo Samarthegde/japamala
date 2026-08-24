@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -20,13 +19,15 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Required by flutter_local_notifications, which uses java.time APIs
+        // unavailable on older Android versions without desugaring.
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
+    kotlin {
+    jvmToolchain(21)
+}
 
     defaultConfig {
         applicationId = "in.eterniqo.japamala"
@@ -36,12 +37,19 @@ android {
         versionName = flutter.versionName
     }
 
+    // A release keystore is only present when key.properties points at one —
+    // locally for a real release, or written by CI from repository secrets.
+    val releaseStoreFile = keystoreProperties.getProperty("storeFile")
+    val hasReleaseKeystore = !releaseStoreFile.isNullOrEmpty()
+
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = file(keystoreProperties["storeFile"] as String? ?: "")
-            storePassword = keystoreProperties["storePassword"] as String?
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(releaseStoreFile)
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
         }
     }
 
@@ -49,7 +57,14 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // Without a keystore the build still produces an installable
+            // artifact, signed with the debug key. Such a build can be
+            // sideloaded for testing but never uploaded to Play.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -57,4 +72,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

@@ -25,13 +25,14 @@ class MantraAdapter extends TypeAdapter<Mantra> {
       currentCount: fields[5] as int,
       isDaily: fields[6] as bool,
       lastResetDate: fields[7] as DateTime?,
+      beadsPerRound: fields[8] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Mantra obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class MantraAdapter extends TypeAdapter<Mantra> {
       ..writeByte(6)
       ..write(obj.isDaily)
       ..writeByte(7)
-      ..write(obj.lastResetDate);
+      ..write(obj.lastResetDate)
+      ..writeByte(8)
+      ..write(obj.beadsPerRound);
   }
 
   @override

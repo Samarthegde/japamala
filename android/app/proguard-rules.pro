@@ -32,3 +32,24 @@
 # Keep data for R8
 -keep class androidx.lifecycle.** { *; }
 -keep class androidx.annotation.** { *; }
+
+# --- flutter_local_notifications ------------------------------------------
+# Serialises scheduled notifications with Gson, so R8 must not strip the
+# model classes or the generic signatures Gson reflects over. Without these
+# a scheduled reminder fails only in release builds.
+-keep class com.dexterous.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
+-dontwarn sun.misc.**
+
+# --- Platform channel ------------------------------------------------------
+# Volume key counting is driven from MainActivity over a method channel.
+-keep class in.eterniqo.japamala.** { *; }
+-keep class com.eterniqo.japamala.** { *; }

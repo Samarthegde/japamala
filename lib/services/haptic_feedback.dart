@@ -1,86 +1,71 @@
 import 'package:vibration/vibration.dart';
 
 enum HapticType {
-  light,      // Single light vibration
-  medium,     // Medium vibration
-  heavy,      // Heavy vibration
-  success,    // Success pattern (double vibration)
+  light, // Single light vibration
+  medium, // Medium vibration
+  heavy, // Heavy vibration
+  success, // Success pattern (double vibration)
   completion, // Completion pattern (triple vibration)
-  error,      // Error pattern (long vibration)
+  error, // Error pattern (long vibration)
 }
 
 class HapticFeedbackService {
-  static Future<bool> get hasVibrator async {
-    return await Vibration.hasVibrator() ?? false;
+  static bool _hasVibrator = false;
+  static bool _initialized = false;
+
+  /// Queries the device once and caches the result. Called from `main()` so
+  /// that counting taps never pay for a platform channel round-trip.
+  static Future<void> init() async {
+    if (_initialized) return;
+    try {
+      _hasVibrator = await Vibration.hasVibrator();
+    } catch (_) {
+      _hasVibrator = false;
+    }
+    _initialized = true;
   }
 
+  static bool get hasVibrator => _hasVibrator;
+
   static Future<bool> get hasAmplitudeControl async {
-    return await Vibration.hasAmplitudeControl() ?? false;
+    return await Vibration.hasAmplitudeControl();
+  }
+
+  static Future<void> _vibrate({int? duration, List<int>? pattern}) async {
+    if (!_initialized) await init();
+    if (!_hasVibrator) return;
+    if (pattern != null) {
+      await Vibration.vibrate(pattern: pattern);
+    } else if (duration != null) {
+      await Vibration.vibrate(duration: duration);
+    }
   }
 
   static Future<void> vibrate(HapticType type) async {
-    final hasVibrator = await Vibration.hasVibrator();
-    if (hasVibrator == false) return;
-
     switch (type) {
       case HapticType.light:
-        await Vibration.vibrate(duration: 50);
-        break;
-
+        return _vibrate(duration: 50);
       case HapticType.medium:
-        await Vibration.vibrate(duration: 100);
-        break;
-
+        return _vibrate(duration: 100);
       case HapticType.heavy:
-        await Vibration.vibrate(duration: 200);
-        break;
-
+        return _vibrate(duration: 200);
       case HapticType.success:
-        await Vibration.vibrate(pattern: [0, 50, 50, 50]);
-        break;
-
+        return _vibrate(pattern: [0, 50, 50, 50]);
       case HapticType.completion:
-        await Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
-        break;
-
+        return _vibrate(pattern: [0, 100, 50, 100, 50, 100]);
       case HapticType.error:
-        await Vibration.vibrate(duration: 500);
-        break;
+        return _vibrate(duration: 500);
     }
   }
 
-  static Future<void> beadCount() async {
-    final deviceHasVibrator = await hasVibrator;
-    if (deviceHasVibrator) {
-      await Vibration.vibrate(duration: 30);
-    }
-  }
+  static Future<void> beadCount() => _vibrate(duration: 30);
 
-  static Future<void> mantraComplete() async {
-    final deviceHasVibrator = await hasVibrator;
-    if (deviceHasVibrator) {
-      await Vibration.vibrate(pattern: [0, 50, 50, 50]);
-    }
-  }
+  static Future<void> mantraComplete() => _vibrate(pattern: [0, 50, 50, 50]);
 
-  static Future<void> sessionComplete() async {
-    final deviceHasVibrator = await hasVibrator;
-    if (deviceHasVibrator) {
-      await Vibration.vibrate(pattern: [0, 100, 50, 100, 50, 100]);
-    }
-  }
+  static Future<void> sessionComplete() =>
+      _vibrate(pattern: [0, 100, 50, 100, 50, 100]);
 
-  static Future<void> buttonPress() async {
-    final deviceHasVibrator = await hasVibrator;
-    if (deviceHasVibrator) {
-      await Vibration.vibrate(duration: 20);
-    }
-  }
+  static Future<void> buttonPress() => _vibrate(duration: 20);
 
-  static Future<void> error() async {
-    final deviceHasVibrator = await hasVibrator;
-    if (deviceHasVibrator) {
-      await Vibration.vibrate(duration: 300);
-    }
-  }
+  static Future<void> error() => _vibrate(duration: 300);
 }
